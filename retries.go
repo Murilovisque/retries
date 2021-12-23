@@ -13,6 +13,5 @@ func NewRetryer(qtdRetries int, timeBetweenRetries time.Duration) Retryer {
 }
 
 func NewHttpRetryer(client *http.Client, qtdRetries int, timeBetweenRetries time.Duration) HttpRetryer {
-	r := &retries.Retryer{Retries: qtdRetries, TimeBetweenRetries: timeBetweenRetries}
-	return &rhttp.HttpRetryer{Client: client, Retryer: r}
+	return &rhttp.HttpRetryer{Client: client, Retries: qtdRetries, TimeBetweenRetries: timeBetweenRetries}
 }

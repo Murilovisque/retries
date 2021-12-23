@@ -1,55 +1,65 @@
 package http
 
 import (
-	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	retries "github.com/Murilovisque/retries/internal"
 )
 
 type HttpRetryer struct {
-	*retries.Retryer
-	Client *http.Client
+	Client                *http.Client
+	ExecBeforeRequest     func(attempt int, req *http.Request)
+	ExecWhenRequestFailed func(error, *http.Response)
+	Retries               int
+	TimeBetweenRetries    time.Duration
 }
 
 func (hr *HttpRetryer) RequestWithExpectedStatus(req *http.Request, expectedstatus ...int) (*http.Response, error) {
-	var resToReturn *http.Response
-	err := hr.Retryer.Do(func() (bool, error) {
-		res, err := hr.Client.Do(req)
-		if err != nil {
-			return true, err
-		}
-		for _, expStatus := range expectedstatus {
-			if expStatus == res.StatusCode {
-				resToReturn = res
-				return false, nil
-			}
-		}
-		return true, fmt.Errorf("expected a status between %v , but received %d", expectedstatus, res.StatusCode)
-	})
-	return resToReturn, err
+	return hr.RequestWithExpectedStatusAndBody(req, nil, expectedstatus...)
 }
 
 func (hr *HttpRetryer) RequestWithExpectedStatusAndBody(req *http.Request, bodyHandler func(io.ReadCloser) (bool, error), expectedstatus ...int) (*http.Response, error) {
-	var resToReturn *http.Response
-	err := hr.Retryer.Do(func() (bool, error) {
-		res, err := hr.Client.Do(req)
-		if err != nil {
-			return true, err
+	attempt := 1
+	for {
+		if hr.ExecBeforeRequest != nil {
+			hr.ExecBeforeRequest(attempt, req)
 		}
-		for _, expStatus := range expectedstatus {
-			if expStatus == res.StatusCode {
-				shouldRetry, err := bodyHandler(res.Body)
-				res.Body.Close()
-				if !shouldRetry && err == nil {
-					resToReturn = res
-					return false, nil
+		res, err := hr.Client.Do(req)
+		attempt++
+		if err == nil {
+			for _, expStatus := range expectedstatus {
+				if expStatus == res.StatusCode {
+					if bodyHandler == nil {
+						return res, nil
+					}
+					shouldRetry, err := bodyHandler(res.Body)
+					res.Body.Close()
+					if !shouldRetry && err == nil {
+						return res, nil
+					}
+					break
 				}
-				return shouldRetry, err
 			}
 		}
-		return true, fmt.Errorf("expected a status between %v , but received %d", expectedstatus, res.StatusCode)
-	})
-	return resToReturn, err
+		if (err != nil || res != nil) && hr.ExecWhenRequestFailed != nil {
+			hr.ExecWhenRequestFailed(err, res)
+		}
+		if attempt > hr.Retries {
+			if err == nil {
+				return res, retries.ErrExceededAttempts
+			}
+			return res, err
+		}
+		time.Sleep(hr.TimeBetweenRetries)
+	}
+}
+
+func (hr *HttpRetryer) SetFuncExecBeforeRequest(f func(attempt int, req *http.Request)) {
+	hr.ExecBeforeRequest = f
+}
+
+func (hr *HttpRetryer) SetFuncExecWhenRequestFailed(f func(error, *http.Response)) {
+	hr.ExecWhenRequestFailed = f
 }

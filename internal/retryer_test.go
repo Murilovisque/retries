@@ -50,7 +50,7 @@ func TestShouldExceedAttempts(t *testing.T) {
 	err := r.Do(func() (bool, error) {
 		return true, nil
 	})
-	if err != errExceededAttempts {
+	if err != ErrExceededAttempts {
 		t.Fatal(err)
 	}
 }

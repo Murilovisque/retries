@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	errExceededAttempts = errors.New("exceeded attempts")
+	ErrExceededAttempts = errors.New("exceeded attempts")
 )
 
 type Retryer struct {
@@ -32,7 +32,7 @@ func (r *Retryer) Do(work func() (bool, error)) error {
 		}
 		if attempt > r.Retries {
 			if err == nil {
-				return errExceededAttempts
+				return ErrExceededAttempts
 			}
 			return err
 		}
