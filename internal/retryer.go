@@ -9,15 +9,11 @@ var (
 	errExceededAttempts = errors.New("exceeded attempts")
 )
 
-func NewRetryer(retries int, timeBetweenRetries time.Duration) *Retryer {
-	return &Retryer{retries: retries, timeBetweenRetries: timeBetweenRetries}
-}
-
 type Retryer struct {
 	ExecBeforeTry      func(attempt int)
 	ExecWhenWorkFailed func(error)
-	retries            int
-	timeBetweenRetries time.Duration
+	Retries            int
+	TimeBetweenRetries time.Duration
 }
 
 func (r *Retryer) Do(work func() (bool, error)) error {
@@ -34,12 +30,20 @@ func (r *Retryer) Do(work func() (bool, error)) error {
 		if err != nil && r.ExecWhenWorkFailed != nil {
 			r.ExecWhenWorkFailed(err)
 		}
-		if attempt > r.retries {
+		if attempt > r.Retries {
 			if err == nil {
 				return errExceededAttempts
 			}
 			return err
 		}
-		time.Sleep(r.timeBetweenRetries)
+		time.Sleep(r.TimeBetweenRetries)
 	}
+}
+
+func (r *Retryer) SetFuncExecBeforeTry(f func(attempt int)) {
+	r.ExecBeforeTry = f
+}
+
+func (r *Retryer) SetFuncExecWhenWorkFailed(f func(error)) {
+	r.ExecWhenWorkFailed = f
 }

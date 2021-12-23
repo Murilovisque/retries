@@ -6,7 +6,7 @@ import (
 )
 
 func TestShouldWorksFirstTime(t *testing.T) {
-	r := NewRetryer(3, 0)
+	r := &Retryer{Retries: 3, TimeBetweenRetries: 0}
 	valueToChange := false
 	const valueExpected = true
 	err := r.Do(func() (bool, error) {
@@ -25,7 +25,7 @@ func TestShouldWorksSecondTime(t *testing.T) {
 	var attempts int
 	const expectedAttempts = 2
 	jobCounter := 1
-	r := NewRetryer(3, 0)
+	r := &Retryer{Retries: 3, TimeBetweenRetries: 0}
 	r.ExecBeforeTry = func(a int) {
 		attempts = a
 	}
@@ -46,7 +46,7 @@ func TestShouldWorksSecondTime(t *testing.T) {
 }
 
 func TestShouldExceedAttempts(t *testing.T) {
-	r := NewRetryer(3, 0)
+	r := &Retryer{Retries: 3, TimeBetweenRetries: 0}
 	err := r.Do(func() (bool, error) {
 		return true, nil
 	})
@@ -58,7 +58,7 @@ func TestShouldExceedAttempts(t *testing.T) {
 func TestShouldInformAndReturnErrors(t *testing.T) {
 	var attempts int
 	var err error
-	r := NewRetryer(3, 0)
+	r := &Retryer{Retries: 3, TimeBetweenRetries: 0}
 	r.ExecWhenWorkFailed = func(errWork error) {
 		if errWork != err {
 			t.Fatal(errWork)
