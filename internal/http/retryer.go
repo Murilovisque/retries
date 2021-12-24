@@ -11,7 +11,7 @@ import (
 type HttpRetryer struct {
 	Client                *http.Client
 	ExecBeforeRequest     func(attempt int, req *http.Request)
-	ExecWhenRequestFailed func(error, *http.Response)
+	ExecWhenRequestFailed func(error, *http.Request, *http.Response)
 	Retries               int
 	TimeBetweenRetries    time.Duration
 }
@@ -44,7 +44,7 @@ func (hr *HttpRetryer) RequestWithExpectedStatusAndBody(req *http.Request, bodyH
 			}
 		}
 		if (err != nil || res != nil) && hr.ExecWhenRequestFailed != nil {
-			hr.ExecWhenRequestFailed(err, res)
+			hr.ExecWhenRequestFailed(err, req, res)
 		}
 		if attempt > hr.Retries {
 			if err == nil {
@@ -60,6 +60,6 @@ func (hr *HttpRetryer) SetFuncExecBeforeRequest(f func(attempt int, req *http.Re
 	hr.ExecBeforeRequest = f
 }
 
-func (hr *HttpRetryer) SetFuncExecWhenRequestFailed(f func(error, *http.Response)) {
+func (hr *HttpRetryer) SetFuncExecWhenRequestFailed(f func(error, *http.Request, *http.Response)) {
 	hr.ExecWhenRequestFailed = f
 }
